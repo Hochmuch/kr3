@@ -1,0 +1,71 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    environment:
+      POSTGRES_DB: file_metadata
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  api-gateway:
+    image: api-gateway
+    container_name: api-gateway
+    build:
+      context: ./api-gateway
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+    depends_on:
+      - file-storing-service
+      - file-analysis-service
+
+  file-storing-service:
+    image: file-storing-service
+    container_name: file-storing-service
+    build:
+      context: ./file-storing-service
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/file_metadata
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+    networks:
+      - backend
+    depends_on:
+      - postgres
+    volumes:
+      - file_storage:/main/storage
+
+  file-analysis-service:
+    image: file-analysis-service
+    container_name: file-analysis-service
+    build:
+      context: ./file-analysis-service
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/file_metadata
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+    networks:
+      - backend
+    depends_on:
+      - postgres
+
+
+volumes:
+  postgres_data:
+  file_storage:
+
+networks:
+  backend:
